@@ -1,24 +1,28 @@
 package com.kira.jobms.job;
 
 import com.kira.jobms.job.Job;
+import com.kira.jobms.job.dto.JobWithCompanyDTO;
+import com.kira.jobms.job.external.Company;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.client.RestTemplate;
 
 import java.net.URI;
+import java.util.ArrayList;
 import java.util.List;
 
 @RestController
 @RequestMapping
 public class JobController {
 
-    private final com.kira.jobms.job.JobService jobService;
+    private final JobService jobService;
 
-    public JobController(com.kira.jobms.job.JobService jobService) {
+    public JobController(JobService jobService) {
         this.jobService = jobService;
     }
 
     @GetMapping("/jobs")
-    public ResponseEntity<List<com.kira.jobms.job.Job>> findAll() {
+    public ResponseEntity<List<JobWithCompanyDTO>> findAll() {
         return ResponseEntity.ok(jobService.findAll());
     }
 

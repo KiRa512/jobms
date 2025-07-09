@@ -1,9 +1,11 @@
 package com.kira.jobms.job;
 
+import com.kira.jobms.job.dto.JobWithCompanyDTO;
+
 import java.util.List;
 
 public interface JobService {
-    List<Job> findAll();
+    List<JobWithCompanyDTO> findAll();
     Job createJob(Job job);
     Job findById(Long id);
     boolean deleteJob(Long id);

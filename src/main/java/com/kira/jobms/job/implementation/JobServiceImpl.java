@@ -4,8 +4,12 @@ package com.kira.jobms.job.implementation;
 import com.kira.jobms.job.Job;
 import com.kira.jobms.job.JobRepository;
 import com.kira.jobms.job.JobService;
+import com.kira.jobms.job.dto.JobWithCompanyDTO;
+import com.kira.jobms.job.external.Company;
 import org.springframework.stereotype.Service;
+import org.springframework.web.client.RestTemplate;
 
+import java.util.ArrayList;
 import java.util.List;
 
 
@@ -22,9 +26,33 @@ public class JobServiceImpl implements JobService {
     }
 
     @Override
-    public List<Job> findAll() {
+    public List<JobWithCompanyDTO> findAll() {
         // Implementation to return all jobs
-        return jobRepository.findAll();
+        List <Job> jobs = jobRepository.findAll();
+        List<JobWithCompanyDTO> jobWithCompanyDTOS = new ArrayList<>();
+        RestTemplate restTemplate = new RestTemplate();
+        for(Job job: jobs){
+            JobWithCompanyDTO jobWithCompanyDTO = new JobWithCompanyDTO();
+            jobWithCompanyDTO.setJob(job);
+            String companyUrl = "http://localhost:8086/companies/" + job.getCompanyId();
+            try{
+                Company company = restTemplate.getForObject(companyUrl, Company.class);
+                if (company != null) {
+                    jobWithCompanyDTO.setCompany(company);
+                } else {
+                    jobWithCompanyDTO.setCompany(new Company());
+                }
+
+            }
+            catch (Exception e) {
+                jobWithCompanyDTO.setCompany(new Company());
+            }
+            jobWithCompanyDTOS.add(jobWithCompanyDTO);
+
+        }
+
+        return jobWithCompanyDTOS;
+
     }
 
     @Override
