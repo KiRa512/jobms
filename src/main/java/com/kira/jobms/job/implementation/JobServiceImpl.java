@@ -4,8 +4,10 @@ package com.kira.jobms.job.implementation;
 import com.kira.jobms.job.Job;
 import com.kira.jobms.job.JobRepository;
 import com.kira.jobms.job.JobService;
+import com.kira.jobms.job.clients.CompanyClient;
 import com.kira.jobms.job.dto.JobWithCompanyDTO;
 import com.kira.jobms.job.external.Company;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
@@ -21,40 +23,46 @@ public class JobServiceImpl implements JobService {
     // Constructor injection of the JobRepository
     private JobRepository jobRepository;
 
-    public JobServiceImpl(JobRepository jobRepository){
+    @Autowired
+    private RestTemplate restTemplate;
+
+    private CompanyClient companyClient;
+
+    public JobServiceImpl(JobRepository jobRepository , RestTemplate restTemplate , CompanyClient companyClient) {
         this.jobRepository = jobRepository;
+        this.restTemplate = restTemplate;
+        this.companyClient = companyClient;
+
     }
+
+
+
 
     @Override
     public List<JobWithCompanyDTO> findAll() {
-        // Implementation to return all jobs
-        List <Job> jobs = jobRepository.findAll();
+        List<Job> jobs = jobRepository.findAll();
         List<JobWithCompanyDTO> jobWithCompanyDTOS = new ArrayList<>();
-        RestTemplate restTemplate = new RestTemplate();
-        for(Job job: jobs){
-            JobWithCompanyDTO jobWithCompanyDTO = new JobWithCompanyDTO();
-            jobWithCompanyDTO.setJob(job);
-            String companyUrl = "http://localhost:8086/companies/" + job.getCompanyId();
-            try{
-                Company company = restTemplate.getForObject(companyUrl, Company.class);
-                if (company != null) {
-                    jobWithCompanyDTO.setCompany(company);
-                } else {
-                    jobWithCompanyDTO.setCompany(new Company());
-                }
-
-            }
-            catch (Exception e) {
-                jobWithCompanyDTO.setCompany(new Company());
-            }
-            jobWithCompanyDTOS.add(jobWithCompanyDTO);
-
+        for (Job job : jobs) {
+            jobWithCompanyDTOS.add(createJobWithCompanyDTO(job));
         }
-
         return jobWithCompanyDTOS;
-
     }
 
+    private JobWithCompanyDTO createJobWithCompanyDTO(Job job) {
+        JobWithCompanyDTO dto = new JobWithCompanyDTO();
+        dto.setJob(job);
+
+        String companyUrl = "http://localhost:8086/companies/" + job.getCompanyId();
+        try {
+            Company company = companyClient.getCompanyById(job.getCompanyId());
+            dto.setCompany(company != null ? company : new Company());
+        } catch (Exception e) {
+            // log error and assign empty company
+            System.err.println("Error fetching company for job ID " + job.getId() + ": " + e.getMessage());
+            dto.setCompany(new Company());
+        }
+        return dto;
+    }
     @Override
     public Job createJob(Job job) {
         // Implementation to create a new job
@@ -63,8 +71,9 @@ public class JobServiceImpl implements JobService {
         return job;
     }
     @Override
-    public Job findById(Long id){
-        return jobRepository.findById(id).orElse(null); // Find a job by ID, return null if not found
+    public JobWithCompanyDTO findById(Long id){
+        Job job =  jobRepository.findById(id).orElse(null); // Find a job by ID, return null if not found
+        return createJobWithCompanyDTO(job);
     }
     @Override
     public boolean deleteJob(Long id) {
