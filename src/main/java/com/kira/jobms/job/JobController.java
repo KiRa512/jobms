@@ -12,7 +12,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 @RestController
-@RequestMapping
+@RequestMapping("/jobs")
 public class JobController {
 
     private final JobService jobService;
@@ -21,19 +21,19 @@ public class JobController {
         this.jobService = jobService;
     }
 
-    @GetMapping("/jobs")
+    @GetMapping
     public ResponseEntity<List<JobWithCompanyDTO>> findAll() {
         return ResponseEntity.ok(jobService.findAll());
     }
 
-    @PostMapping("/jobs")
+    @PostMapping
     public ResponseEntity<Job> createJob(@RequestBody Job job) {
         Job createdJob = jobService.createJob(job);
         URI location = URI.create("/jobs/" + createdJob.getId());
         return ResponseEntity.created(location).body(createdJob);
     }
 
-    @GetMapping("/jobs/{id}")
+    @GetMapping("/{id}")
     public ResponseEntity<JobWithCompanyDTO> findById(@PathVariable Long id) {
         JobWithCompanyDTO job = jobService.findById(id);
         if (job != null) {
@@ -43,13 +43,13 @@ public class JobController {
         }
     }
 
-    @DeleteMapping("/jobs/{id}")
+    @DeleteMapping("/{id}")
     public ResponseEntity<String> deleteJob(@PathVariable Long id) {
         jobService.deleteJob(id);
         return ResponseEntity.ok("Job deleted successfully!");
     }
 
-    @PutMapping("/jobs/{id}")
+    @PutMapping("/{id}")
     public ResponseEntity<String> updateJob(@PathVariable Long id, @RequestBody Job updatedJob) {
         boolean updated = jobService.updateJob(id, updatedJob);
         if (updated) {

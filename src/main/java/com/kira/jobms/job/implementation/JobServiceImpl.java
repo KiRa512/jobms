@@ -7,9 +7,8 @@ import com.kira.jobms.job.JobService;
 import com.kira.jobms.job.clients.CompanyClient;
 import com.kira.jobms.job.dto.JobWithCompanyDTO;
 import com.kira.jobms.job.external.Company;
-import org.springframework.beans.factory.annotation.Autowired;
+import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
 import org.springframework.stereotype.Service;
-import org.springframework.web.client.RestTemplate;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -23,14 +22,11 @@ public class JobServiceImpl implements JobService {
     // Constructor injection of the JobRepository
     private JobRepository jobRepository;
 
-    @Autowired
-    private RestTemplate restTemplate;
 
     private CompanyClient companyClient;
 
-    public JobServiceImpl(JobRepository jobRepository , RestTemplate restTemplate , CompanyClient companyClient) {
+    public JobServiceImpl(JobRepository jobRepository ,  CompanyClient companyClient) {
         this.jobRepository = jobRepository;
-        this.restTemplate = restTemplate;
         this.companyClient = companyClient;
 
     }
@@ -39,6 +35,7 @@ public class JobServiceImpl implements JobService {
 
 
     @Override
+    @CircuitBreaker(name = "companyBreaker",fallbackMethod = "fallbackFindAll")
     public List<JobWithCompanyDTO> findAll() {
         List<Job> jobs = jobRepository.findAll();
         List<JobWithCompanyDTO> jobWithCompanyDTOS = new ArrayList<>();
@@ -48,19 +45,31 @@ public class JobServiceImpl implements JobService {
         return jobWithCompanyDTOS;
     }
 
+    // Fallback method for findAll
+    public List<JobWithCompanyDTO> fallbackFindAll(Throwable t) {
+        System.err.println("Fallback triggered: " + t.getMessage());
+
+        Job fallbackJob = new Job();
+        fallbackJob.setTitle("N/A");
+        fallbackJob.setDescription("Job data not available due to service disruption.");
+
+        Company fallbackCompany = new Company();
+        fallbackCompany.setName("Company Service Unavailable");
+        fallbackCompany.setDescription("The company service is currently not reachable.");
+
+        JobWithCompanyDTO fallbackDTO = new JobWithCompanyDTO();
+        fallbackDTO.setJob(fallbackJob);
+        fallbackDTO.setCompany(fallbackCompany);
+
+        return List.of(fallbackDTO);
+    }
+
+
     private JobWithCompanyDTO createJobWithCompanyDTO(Job job) {
         JobWithCompanyDTO dto = new JobWithCompanyDTO();
         dto.setJob(job);
-
-        String companyUrl = "http://localhost:8086/companies/" + job.getCompanyId();
-        try {
-            Company company = companyClient.getCompanyById(job.getCompanyId());
-            dto.setCompany(company != null ? company : new Company());
-        } catch (Exception e) {
-            // log error and assign empty company
-            System.err.println("Error fetching company for job ID " + job.getId() + ": " + e.getMessage());
-            dto.setCompany(new Company());
-        }
+        Company company = companyClient.getCompanyById(job.getCompanyId());
+        dto.setCompany(company);
         return dto;
     }
     @Override
